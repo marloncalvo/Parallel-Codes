@@ -32,9 +32,8 @@ class SieveWorker extends Thread {
 		while(true) {
 
 			if (index >= primes.size()) {
-				//threadDebug("waiting");
 				try {
-					Thread.sleep(100);
+					Thread.sleep(50);
 				} catch (Exception e) {
 
 				}
@@ -49,13 +48,9 @@ class SieveWorker extends Thread {
 
 			int start = ((int) Math.ceil((double) low / p)) * p;
 			for (int n = start; n <= high; n+=p) {
-				//threadDebug(""+n);
 				bits.set(n-low, false);
-//				if (Thread.currentThread().getName().contains("1"))
-//					System.out.println(n-low);
 			}
 
-			//threadDebug("finished prime " + primes.get(index));
 			index++;
 		}
 	}
