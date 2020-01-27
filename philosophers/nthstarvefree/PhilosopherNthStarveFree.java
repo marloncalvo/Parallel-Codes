@@ -6,6 +6,8 @@ class Philosopher extends Thread {
 	public final Lock leftChopstick;
 	public final Lock rightChopstick;
 
+	public final static Lock globalLock = new ReentrantLock();
+
 	public final int id;
 
 	public Philosopher(int id, Lock leftChopstick, Lock rightChopstick) {
@@ -16,35 +18,28 @@ class Philosopher extends Thread {
 
 	public void eat() {
 		/*
-		Let's prevent deadlock by always dropping our chopstick,
-		if we are unsuccesful of grabbing both chopsticks.
+		When the i'th developer wants to eat, he will be k away 
+		from obtaining the lock. Before he obtains the lock, he will
+		wait, doing nothing. Once he obtains the lock, and only one 
+		philosopher can have the lock; he will be the only philosopher
+		with the ability to grab chopsticks.
 
-		This can lead to starvation, if the neighbors of some philosopher P
-		are cycling in some manner, where P-1 unlocks P's left chopstick,
-		but P+1 locks their left chopstick, causing P to drop both.
+		At this time there are only two possibilities, either one or both 
+		of the chopsticks are current in use. Or there are none in use.
+		If the chopsticks are in use, we know that no one else can grab
+		the lock, since only this philosopher can grab the lock; eventually,
+		other philosophers must stop eating to think, which will eventually
+		be the two chopsticks we need.
+		In the case where chopsticks are unused, we simple lock those chopsticks.
+		
+		Since after grabbing the general lock, no one else can grab any other chopsticks, and whoever is holding chopsticks must think, releasing 
+		their chopsticks locks; we are guaranteed to have the lock to both
+		chopsticks. This rule will extend to each next philosopher with a lock.
 		*/ 
-		try {
-
-			while (true) {
-
-				// Let's wait until we can grab a chopstick.
-				leftChopstick.lock();
-
-				// After grabbing a chopstick, check if we can grab another.
-				// If we can't, let's letgo of both chopsticks, prevent
-				// deadlock.
-				if (!rightChopstick.tryLock()) {
-					leftChopstick.unlock();
-				} else {
-
-					// We have both chopsticks, we are eating.
-					return;
-				}
-			}
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		Philosopher.globalLock.lock();
+		leftChopstick.lock();
+		rightChopstick.lock();
+		Philosopher.globalLock.unlock();
 	}
 
 	public void think() {
@@ -79,9 +74,9 @@ class Philosopher extends Thread {
 	}
 }
 
-public class PhilosopherStarving {
+public class PhilosopherNthStarveFree {
 	public static void main(String[] args) {
-		int size = 5;
+		int size = Integer.valueOf(args[0]);
 		Lock [] chopsticks = new Lock[size];
 		Philosopher [] philosophers = new Philosopher[size];
 

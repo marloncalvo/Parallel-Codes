@@ -55,7 +55,7 @@ class Philosopher extends Thread {
 	}
 }
 
-public class PhilosopherStarving {
+public class PhilosopherStarveFree {
 	public static void main(String[] args) {
 		int size = 5;
 		Lock [] chopsticks = new Lock[size];
