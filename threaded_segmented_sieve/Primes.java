@@ -71,6 +71,8 @@ class SieveController extends Thread {
 
 	public final SieveWorker [] workers;
 
+	public long startTime = System.nanoTime();
+
 	public SieveController(int numPrimes, int numWorkers) {
 
 		this.size = (int) Math.ceil((double) numPrimes / numWorkers);
@@ -119,6 +121,13 @@ class SieveController extends Thread {
 		threadDebug("job - testing primes (started)");
 		//testPrimes();
 		threadDebug("job - testing primes (finished)");
+
+
+		try {
+			printResults();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void doSieve(int low) {
@@ -154,6 +163,75 @@ class SieveController extends Thread {
 		}
 
 		primes.add(-1);
+	}
+
+	public void printResults() throws Exception {
+
+		double executionTime = 0;
+		long sumOfPrimes = 0;
+		int numberOfPrimes = 0;
+		String topTenPrimes = "";
+
+		ArrayList<BitSet> sets = new ArrayList<>();
+		sets.add(bits);
+
+		// Join data, the math for figure out correct
+		// location is annoying.
+		for (int w = 0; w < workers.length; w++) {
+			sets.add(workers[w].bits);
+		}
+
+		// Assume primes of 2 and 3, make this a bit cleaner.
+		sumOfPrimes += 2 + 3;
+		numberOfPrimes += 2;
+		for (int i = 6; i <= numPrimes; i+=6) {
+
+			int a = (i-1) / size, ai = (i-1) % size;
+			int b = (i+1) / size, bi = (i+1) % size;
+			
+			if (sets.get(a).get(ai)) {
+				numberOfPrimes++;
+				sumOfPrimes += (i-1);
+			}
+			if (sets.get(b).get(bi)) {
+				numberOfPrimes++;
+				sumOfPrimes += (i+1);
+			}
+		}
+
+		int [] topPrimes = new int[10];
+		int start = ((int)(Math.floor(numPrimes / 6))) * 6;
+		int j = 9;
+		for (int i = start; i >= 0; i-=6) {
+
+			int a = (i-1) / size, ai = (i-1) % size;
+			int b = (i+1) / size, bi = (i+1) % size;
+			
+			if (j < 0)
+				break;
+
+			if (j >= 0 && sets.get(a).get(ai)) {
+				topPrimes[j] = (i-1);
+				j--;
+			}
+			if (j >= 0 && sets.get(b).get(bi)) {
+				topPrimes[j] = (i+1);
+				j--;
+			}
+		}
+
+		for (int k = 0; k < topPrimes.length; k++)
+			topTenPrimes += topPrimes[k] + " ";
+
+
+		// This is the end of it all, effectively.
+		executionTime = (System.nanoTime() - startTime)/1E9;
+
+		FileWriter writer = new FileWriter("primes.txt");
+		writer.write(executionTime + "s " + numberOfPrimes + " " + 	sumOfPrimes + "\n");
+		writer.write(topTenPrimes);
+
+		writer.close();
 	}
 
 	public void testPrimes() {
