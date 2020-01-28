@@ -61,7 +61,7 @@ class SieveWorker extends Thread {
 
 	public void saveResults() {
 
-		System.out.println(size);
+		final int size = high - low;
 		final int start = ((int)(Math.ceil((double) low / 6))) * 6;
 		for (int i = low; i <= high; i+=1) {
 
@@ -219,7 +219,6 @@ class SieveController extends Thread {
 		// location is annoying.
 		for (int i = 0; i < workers.length; i++) {
 			numOfPrimes += workers[i].numOfPrimes;
-			System.out.println(numOfPrimes);
 			sumOfPrimes += workers[i].sumOfPrimes;
 		}
 
