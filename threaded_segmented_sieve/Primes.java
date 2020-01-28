@@ -9,6 +9,9 @@ class SieveWorker extends Thread {
 	public final int high;
 	public int index = 0;
 
+	public int numOfPrimes = 0;
+	public long sumOfPrimes = 0;
+
 	public final static int MAX_SQRT = (int) Math.ceil(Math.sqrt(Integer.MAX_VALUE));
 
 	public SieveWorker(List<Integer> primes, int low, int high) {
@@ -42,6 +45,7 @@ class SieveWorker extends Thread {
 
 			int p = primes.get(index);
 			if (p == -1) {
+				saveResults();
 				threadDebug("finished - terminating");
 				return;
 			}
@@ -55,6 +59,26 @@ class SieveWorker extends Thread {
 		}
 	}
 
+	public void saveResults() {
+
+		System.out.println(size);
+		final int start = ((int)(Math.ceil((double) low / 6))) * 6;
+		for (int i = low; i <= high; i+=1) {
+
+			int ai = (i - 1) - this.low;
+			int bi = (i + 1) - this.low;
+			
+			if (ai >= 0 && ai <= size && bits.get(ai)) {
+				numOfPrimes++;
+				sumOfPrimes += (i-1);
+			}
+			if (bi >= this.low && bi <= size && bits.get(bi)) {
+				numOfPrimes++;
+				sumOfPrimes += (i+1);
+			}
+		}
+	}
+
 	public static void threadDebug(String info) {
 		if (Primes.DEBUG)
 			System.out.println(Thread.currentThread().getName() + ": " + info);
@@ -64,14 +88,15 @@ class SieveWorker extends Thread {
 class SieveController extends Thread {
 
 	public final ArrayList<Integer> primes;
+	public final SieveWorker [] workers;
 	public final BitSet bits;
 
 	public final int numPrimes;
 	public final int size;
 
-	public final SieveWorker [] workers;
-
 	public long startTime = System.nanoTime();
+	public int numOfPrimes = 0;
+	public long sumOfPrimes = 0;
 
 	public SieveController(int numPrimes, int numWorkers) {
 
@@ -107,6 +132,7 @@ class SieveController extends Thread {
 		doSieve(initialPrimesSize + 1);
 		threadDebug("job - performing sieve (finished)");
 
+		saveResults(size-1);
 		// We're done, let's destroy so we can collect data.
 		threadDebug("waiting on workers");
 		for (int i = 0; i < workers.length; i++) {
@@ -121,7 +147,6 @@ class SieveController extends Thread {
 		threadDebug("job - testing primes (started)");
 		//testPrimes();
 		threadDebug("job - testing primes (finished)");
-
 
 		try {
 			printResults();
@@ -165,56 +190,55 @@ class SieveController extends Thread {
 		primes.add(-1);
 	}
 
-	public void printResults() throws Exception {
+	public void saveResults(int size) {
 
-		double executionTime = 0;
-		long sumOfPrimes = 0;
-		int numberOfPrimes = 0;
-		String topTenPrimes = "";
-
-		ArrayList<BitSet> sets = new ArrayList<>();
-		sets.add(bits);
-
-		// Join data, the math for figure out correct
-		// location is annoying.
-		for (int w = 0; w < workers.length; w++) {
-			sets.add(workers[w].bits);
-		}
-
-		// Assume primes of 2 and 3, make this a bit cleaner.
+		numOfPrimes += 2;
 		sumOfPrimes += 2 + 3;
-		numberOfPrimes += 2;
-		for (int i = 6; i <= numPrimes; i+=6) {
+		for (int i = 6; i <= size; i+=6) {
 
-			int a = (i-1) / size, ai = (i-1) % size;
-			int b = (i+1) / size, bi = (i+1) % size;
+			int ai = (i - 1);
+			int bi = (i + 1);
 			
-			if (sets.get(a).get(ai)) {
-				numberOfPrimes++;
+			if (bits.get(ai)) {
+				numOfPrimes++;
 				sumOfPrimes += (i-1);
 			}
-			if (sets.get(b).get(bi)) {
-				numberOfPrimes++;
+			if (bits.get(bi)) {
+				numOfPrimes++;
 				sumOfPrimes += (i+1);
 			}
 		}
+	}
+
+	public void printResults() throws Exception {
+
+		double executionTime = 0;
+		String topTenPrimes = "";
+
+		// Join data, the math for figure out correct
+		// location is annoying.
+		for (int i = 0; i < workers.length; i++) {
+			numOfPrimes += workers[i].numOfPrimes;
+			System.out.println(numOfPrimes);
+			sumOfPrimes += workers[i].sumOfPrimes;
+		}
+
+		// Assume primes of 2 and 3, make this a bit cleaner.
+		SieveWorker worker = workers[workers.length-1];
 
 		int [] topPrimes = new int[10];
 		int start = ((int)(Math.floor(numPrimes / 6))) * 6;
 		int j = 9;
 		for (int i = start; i >= 0; i-=6) {
-
-			int a = (i-1) / size, ai = (i-1) % size;
-			int b = (i+1) / size, bi = (i+1) % size;
 			
 			if (j < 0)
 				break;
 
-			if (j >= 0 && sets.get(a).get(ai)) {
+			if (j >= 0 && worker.bits.get((i-1)-worker.low)) {
 				topPrimes[j] = (i-1);
 				j--;
 			}
-			if (j >= 0 && sets.get(b).get(bi)) {
+			if (j >= 0 && worker.bits.get((i+1)-worker.low)) {
 				topPrimes[j] = (i+1);
 				j--;
 			}
@@ -228,7 +252,7 @@ class SieveController extends Thread {
 		executionTime = (System.nanoTime() - startTime)/1E9;
 
 		FileWriter writer = new FileWriter("primes.txt");
-		writer.write(executionTime + "s " + numberOfPrimes + " " + 	sumOfPrimes + "\n");
+		writer.write(executionTime + "s " + numOfPrimes + " " + sumOfPrimes + "\n");
 		writer.write(topTenPrimes);
 
 		writer.close();

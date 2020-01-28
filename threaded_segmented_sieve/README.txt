@@ -31,6 +31,9 @@ base primes, and the worker threads will not be waiting; furthermore, it will
 finish at nearly the same time as the workers threads, as for each base prime,
 it needs sqrt(N) less elements to iterate on.
 
+Each thread will then conclude each own's results, which will be combined by the last living thread,
+and create the output.
+
 A further optimization could have been to chunk the iteration of the threads, so that we maintain
 locality, and improve our cache hits. Also, the use of a busy-wait / shared list, may introduce
 some performance loss instead of a messaging paradigm. 
